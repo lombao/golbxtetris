@@ -30,11 +30,6 @@ const (
 	BOARD_Y_BLOCKS	=	20
 ) 
 
-type piece struct {
-	board [BOARD_X_BLOCKS][BOARD_Y_BLOCKS] int
-	typepiece int
-}
-
 type gameStatus struct {
 	X int
 	Y int
@@ -45,19 +40,30 @@ type gameStatus struct {
 	unitSizeY  int
 	flagEnd	   int
 	board [BOARD_X_BLOCKS][BOARD_Y_BLOCKS] int
+	piece [BOARD_X_BLOCKS][BOARD_Y_BLOCKS] int
 }
 
 func (g *gameStatus) move( dir uint ) {
 	switch dir {
-		case KEY_LEFT:  if g.X > 0 { g.X-- }
-		case KEY_UP:    if g.Y > 0 { g.Y-- }
-		case KEY_RIGHT: if g.X < BOARD_X_BLOCKS -1 { g.X++ }
-		case KEY_DOWN:  if g.Y < BOARD_Y_BLOCKS -1 { 
-								g.Y++ 
-						} else {
-								g.flagEnd = 1
+		case KEY_LEFT:  for x:=1 ; x < BOARD_X_BLOCKS ; x++ {
+							for y:=0 ; y < BOARD_Y_BLOCKS ; y++ {
+								g.piece[x-1][y] = g.piece[x][y]
+							}
 						}
-			
+	
+		case KEY_RIGHT:  for x:=BOARD_X_BLOCKS-1 ; x >= 0 ; x-- {
+							for y:=0 ; y < BOARD_Y_BLOCKS ; y++ {
+								g.piece[x+1][y] = g.piece[x][y]
+							}
+						}
+						
+		case KEY_DOWN:  for x:=0 ; x < BOARD_X_BLOCKS ; x++ {
+							for y:=BOARD_Y_BLOCKS-1 ; y >=0 ; y-- {
+								g.piece[x][y+1] = g.piece[x][y]
+							}
+						}
+						
+		case KEY_UP:    if g.Y > 0 { g.Y-- }	
 	}
 }
 
@@ -87,6 +93,27 @@ func game( g * gameStatus, win *gtk.Window ) {
 	}
 }
 
+func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
+	
+	cellp := 0
+	
+	
+	for x, h := range g.board {
+		for y, cell := range h {
+			cellp = g.piece[x][y]
+			
+			switch ( cell + cellp ) {
+				case 0: break
+				case 1: cr.SetSourceRGB(0.7, 0, 0.1)
+						cr.Rectangle(float64(x) * float64(g.unitSizeX), float64(y) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.008, float64(g.unitSizeY) - 0.005 )
+						cr.Fill()
+				
+			}
+		}
+    fmt.Println()
+	}
+	
+}
 
 func main() {
 	gtk.Init(nil)
@@ -114,10 +141,9 @@ func main() {
 	gs.calculateUnitSize()
 
 	// Event handlers
+		
 	board.Connect("draw", func(board *gtk.DrawingArea, cr *cairo.Context) {
-		cr.SetSourceRGB(0, 0, 0)
-		cr.Rectangle(float64(gs.X) * float64(gs.unitSizeX), float64(gs.Y) * float64(gs.unitSizeY), float64(gs.unitSizeX), float64(gs.unitSizeY) )
-		cr.Fill()
+		gs.drawBoard(cr);
 	})
 	win.Connect("key-press-event", func(win *gtk.Window, ev *gdk.Event) {
 		keyEvent := &gdk.EventKey{ev}
