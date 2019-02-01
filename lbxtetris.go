@@ -39,114 +39,152 @@ type gameStatus struct {
 	unitSizeX  int
 	unitSizeY  int
 	flagEnd	   int
-	board [BOARD_X_BLOCKS][BOARD_Y_BLOCKS] int
-	piece [BOARD_X_BLOCKS][BOARD_Y_BLOCKS] int
+	board [BOARD_X_BLOCKS+4][BOARD_Y_BLOCKS+4] int
+	piece [4][4] int
+	posX	int
+	posY	int
 }
 
 
 func (g *gameStatus) newpiece( ) {
 	
-	 for x:=0 ; x < BOARD_X_BLOCKS ; x++ {
-			for y:=0 ; y < BOARD_Y_BLOCKS ; y++ {
+	 for x:=0 ; x < 4 ; x++ {
+			for y:=0 ; y < 4 ; y++ {
 				g.piece[x][y] = 0
 			}
 	}
 	
 	s := rand.NewSource(time.Now().UnixNano())
     r := rand.New(s)
+    p := (r.Intn(8) + 1) 
     
-
-
-	switch (r.Intn(4)) {
-		case 0:	for x:=3 ; x<8; x++ { g.piece[x][0] = 1 }
-		case 1:	for x:=4 ; x<7; x++ { g.piece[x][0] = 2 }
-				for x:=2 ; x<5; x++ { g.piece[x][1] = 2 }
-		case 2: for x:=2 ; x<5; x++ { g.piece[x][0] = 3 }
-				for x:=4 ; x<7; x++ { g.piece[x][1] = 3 }
-		case 3: for x:=3 ; x<5; x++ { g.piece[x][0] = 4 }
-				for x:=3 ; x<5; x++ { g.piece[x][1] = 4 }	
+	switch (p) {
+		case 1:	g.piece[1][2]  = p; g.piece[2][2]  = p; g.piece[2][1]  = p; g.piece[3][1]  = p; 
+		case 2: g.piece[1][0]  = p; g.piece[1][1]  = p; g.piece[2][1]  = p; g.piece[2][2]  = p; 
+		case 3: g.piece[1][1]  = p; g.piece[2][1]  = p; g.piece[1][2]  = p; g.piece[2][2]  = p; 
+		case 4: g.piece[1][1]  = p; g.piece[2][1]  = p; g.piece[2][2]  = p; g.piece[3][2]  = p; 
+	   	case 5: g.piece[2][0]  = p; g.piece[1][1]  = p; g.piece[2][1]  = p; g.piece[1][2]  = p; 
+		case 6: g.piece[2][1]  = p; g.piece[2][2]  = p; g.piece[1][2]  = p; g.piece[3][2]  = p; 
+	    case 7: g.piece[2][0]  = p; g.piece[2][1]  = p; g.piece[2][2]  = p; g.piece[3][1]  = p; 
+		case 8: g.piece[1][1]  = p; g.piece[2][1]  = p; g.piece[3][1]  = p; g.piece[2][2]  = p; 
 		default: fmt.Println("NOT DEFINED")
 	}
 	
+	g.posY = 0
+	g.posX = ( (BOARD_X_BLOCKS+4) / 2 ) - 2
+	fmt.Println ( "Created new piece ",p,g.posX,g.posY )
 } 
 
+// returns 1 if move is no valid/collision, if ok returns 0
+func (g *gameStatus) checkMove ( ) int {
+	
+	for  x:=g.posX ; x < g.posX + 4 ; x++  {
+		for y := g.posY ; y < g.posY + 4 ; y++ {
+			if g.board[x][y] != 0 && g.piece[x-g.posX][y-g.posY] != 0 {
+				return 1
+			}
+			if g.piece[x-g.posX][y-g.posY] != 0 {
+				if x < 2 { return 1 }
+				if x >= BOARD_X_BLOCKS+2 { return 1 }
+				if y >= BOARD_Y_BLOCKS+2 { return 1 }
+			}
+			
+		}
+	}
+	fmt.Println ( "Returing checkmove 0")
+	return 0
+}
+
+
+func (g *gameStatus) merge (  ) {
+	
+	for  x:=g.posX ; x < g.posX + 4 ; x++  {
+		for y := g.posY ; y < g.posY + 4 ; y++ {
+			g.board[x][y] = g.board[x][y] + g.piece[x-g.posX][y-g.posY]
+		}
+	}
+}
 
 func (g *gameStatus) move( dir uint ) {
-	var k int
 	
-	var aux[BOARD_X_BLOCKS][BOARD_Y_BLOCKS] int
+	var aux1[4][4] int
+	var aux2[4][4] int
 	
 	switch dir {
-		case KEY_LEFT:  k = 0
-						for y:=0 ; y < BOARD_Y_BLOCKS; y++ { k = k + g.piece[0][y] }
-						if  k == 0  {
-							for x:=1 ; x < BOARD_X_BLOCKS ; x++ {
-								for y:=0 ; y < BOARD_Y_BLOCKS ; y++ {
-									aux[x-1][y] = g.piece[x][y]
-								}
-							}				
-							for x:=0 ; x < BOARD_X_BLOCKS ; x++ {
-								for y:=0 ; y < BOARD_Y_BLOCKS ; y++ {
-									if aux[x][y] != 0 && g.board[x][y] != 0 {
-										return
-									}
-								}
-							}
-							g.piece = aux
-						}
-						
-						
-						
+		case KEY_LEFT: 	g.posX = g.posX - 1
+						if g.checkMove() == 1 { g.posX++ }
+							
 	
-		case KEY_RIGHT: k = 0
-						for y:=0 ; y < BOARD_Y_BLOCKS; y++ { k = k + g.piece[BOARD_X_BLOCKS-1][y] } 
-						if k == 0 {
-							for x:=BOARD_X_BLOCKS-2 ; x >= 0 ; x-- {
-								for y:=0 ; y < BOARD_Y_BLOCKS ; y++ {
-									aux[x+1][y] = g.piece[x][y]
-								}
-							}
-							for x:=0 ; x < BOARD_X_BLOCKS ; x++ {
-								for y:=0 ; y < BOARD_Y_BLOCKS ; y++ {
-									if aux[x][y] != 0 && g.board[x][y] != 0 {
-										return
-									}
-								}
-							}
-							g.piece = aux
+		case KEY_RIGHT: g.posX = g.posX +1 
+						if g.checkMove() == 1 { g.posX-- }
+																		
+		case KEY_DOWN:  g.posY++
+						if g.checkMove() == 1 { 
+							fmt.Println ( "we reach the end") 
+							g.posY--
+							g.merge()
+							g.newpiece()
 						}
 						
-						
-		case KEY_DOWN:  k = 0
-						for x:=0 ; x < BOARD_X_BLOCKS; x++ { k = k + g.piece[x][BOARD_Y_BLOCKS-1] }
-						if ( k == 0 ) { 
-							for x:=0 ; x < BOARD_X_BLOCKS ; x++ {
-								for y:=BOARD_Y_BLOCKS-2 ; y >=0 ; y-- {
-									aux[x][y+1] = g.piece[x][y]
-								}
+		case KEY_UP: 	aux1 = g.piece
+						for x:=0 ; x < 4 ; x++ {
+							for y:=0 ; y < 4 ; y++ {
+								aux2[3-y][x] = g.piece[x][y]
 							}
-							for x:=0 ; x < BOARD_X_BLOCKS ; x++ {
-								for y:=0 ; y < BOARD_Y_BLOCKS ; y++ {
-									if aux[x][y] != 0 && g.board[x][y] != 0 {
-										return
-									}
-								}
-							}
-							g.piece = aux			
 						}
-						
-		case KEY_UP: 
-		case KEY_SPACE:	g.move( KEY_DOWN )
-						g.move( KEY_DOWN )
-						g.move( KEY_DOWN )
-						g.move( KEY_DOWN )
-						g.move( KEY_DOWN )
-						g.move( KEY_DOWN )
+						g.piece = aux2
+						if g.checkMove() == 1 {
+							g.piece = aux1
+						}
+							
+		case KEY_SPACE:	g.posY++
+						for g.checkMove() == 0   { g.posY++ }
+						g.posY--
+						g.merge()
+						g.newpiece()
 
-		
 		default:	fmt.Println (" Tecla ",dir )  
 	}
 }
+
+
+
+func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
+	
+	for x:= 2 ; x < BOARD_X_BLOCKS  + 2; x++ {
+		for y:=2 ; y < BOARD_Y_BLOCKS + 2; y++ {
+			cell := g.board[x][y]
+			
+			if x >= g.posX && x < g.posX+4 && y >= g.posY && y < g.posY+4 {
+				   cell = cell + g.piece[x-g.posX][y-g.posY]
+			}
+
+			switch ( cell ) {
+				case 0: cr.SetSourceRGB(0, 0, 0)
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Fill()
+				case 1: cr.SetSourceRGB(0.7, 0, 0.1)
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Fill()
+				case 2: cr.SetSourceRGB(0.3, 0.3, 0.7)
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Fill()
+				case 3: cr.SetSourceRGB(0.5, 0.1, 0.6)
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Fill()
+				case 4: cr.SetSourceRGB(0.2, 0.7, 0.9)
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Fill()
+				default:cr.SetSourceRGB(0.5, 0.5, 0.5)
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Fill() 			
+			}
+		}
+    
+	}
+	
+}
+
 
 func (g *gameStatus) increaseSpeed ( ) {
 	g.speed = g.speed - SPEED_INCREMENT
@@ -170,68 +208,6 @@ func game( g * gameStatus, win *gtk.Window ) {
 			return
 		}
 	}
-}
-
-func (g *gameStatus) merge (  ) {
-	for x:=0 ; x < BOARD_X_BLOCKS ; x++ {
-		for y:=0 ; y < BOARD_Y_BLOCKS ; y++ {
-			g.board[x][y] =  g.board[x][y] + g.piece[x][y]
-		}
-	}
-}
-
-func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
-	
-	cellp := 0
-	
-	for x, h := range g.board {
-		for y, cell := range h {
-			cellp = g.piece[x][y]
-			if  cellp !=0 && cell !=0 {
-				g.flagEnd = 1
-				return
-			}
-
-			switch ( cell + cellp ) {
-				case 0: cr.SetSourceRGB(0, 0, 0)
-						cr.Rectangle(float64(x) * float64(g.unitSizeX), float64(y) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.008, float64(g.unitSizeY) - 0.005 )
-						cr.Fill()
-				case 1: cr.SetSourceRGB(0.7, 0, 0.1)
-						cr.Rectangle(float64(x) * float64(g.unitSizeX), float64(y) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.008, float64(g.unitSizeY) - 0.005 )
-						cr.Fill()
-				case 2: cr.SetSourceRGB(0.3, 0.3, 0.7)
-						cr.Rectangle(float64(x) * float64(g.unitSizeX), float64(y) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.008, float64(g.unitSizeY) - 0.005 )
-						cr.Fill()
-				case 3: cr.SetSourceRGB(0.5, 0.1, 0.6)
-						cr.Rectangle(float64(x) * float64(g.unitSizeX), float64(y) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.008, float64(g.unitSizeY) - 0.005 )
-						cr.Fill()
-				case 4: cr.SetSourceRGB(0.2, 0.7, 0.9)
-						cr.Rectangle(float64(x) * float64(g.unitSizeX), float64(y) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.008, float64(g.unitSizeY) - 0.005 )
-						cr.Fill()
-						
-				
-			}
-		}
-    
-	}
-	
-	Loop:
-	for x:=0 ; x < BOARD_X_BLOCKS ; x++ {
-		for y:=0 ; y < BOARD_Y_BLOCKS ; y++ {
-			if g.piece[x][y] != 0 && y == BOARD_Y_BLOCKS -1 {
-				g.merge()
-				g.newpiece()
-				break Loop
-			} else {
-				if g.piece[x][y] != 0 && g.board[x][y+1] != 0 {
-					g.merge()
-					g.newpiece()
-					break Loop
-				}	
-			}
-		}
-	}
-	
 }
 
 func main() {
