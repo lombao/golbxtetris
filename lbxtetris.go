@@ -11,12 +11,13 @@ import (
 )
 
 const (
-	KEY_LEFT  uint = 65361
-	KEY_UP    uint = 65362
-	KEY_RIGHT uint = 65363
-	KEY_DOWN  uint = 65364
-	KEY_SPACE uint = 32
-	KEY_PAUSE uint = 112
+	KEY_LEFT  	uint = 65361
+	KEY_UP    	uint = 65362
+	KEY_RIGHT 	uint = 65363
+	KEY_DOWN  	uint = 65364
+	KEY_SPACE 	uint = 32
+	KEY_PAUSE 	uint = 112
+	KEY_NEWGAME uint = 110
 )
 
 const (
@@ -186,6 +187,7 @@ func (g *gameStatus) merge (  ) {
 			k = k * g.board[x][y]
 		}
 		if k != 0 {
+			g.points += 10
 			for hy := y ; hy >= 4 ; hy -- {
 				for hx := 4; hx < BOARD_X_BLOCKS + 4; hx++ {
 					g.board[hx][hy] = g.board[hx][hy-1]
@@ -202,8 +204,9 @@ func (g *gameStatus) move( dir uint ) {
 	var aux1[4][4] int
 	var aux2[4][4] int
 	
-	if g.flagEnd == 1 { return }
+	if g.flagEnd == 1 && dir != KEY_NEWGAME { return }
 	if g.flagPause == 1 && dir != KEY_PAUSE { return } 
+	
 	
 	switch dir {
 		case KEY_LEFT: 	g.posX = g.posX - 1
@@ -250,7 +253,18 @@ func (g *gameStatus) move( dir uint ) {
 							fmt.Println("Pause")
 						}
 						
-
+		case KEY_NEWGAME: 
+						if g.flagEnd == 1 {
+								g.flagEnd = 0 
+								g.points = 0 
+								for x:=0 ; x < BOARD_X_BLOCKS + 8; x++ {
+									for y:=0 ; y< BOARD_Y_BLOCKS + 8 ; y++ {
+										g.board[x][y] = 0
+									}
+								}
+								g.newpiece()
+						}
+						
 		default:	fmt.Println (" Key Press ",dir )  
 	}
 }
@@ -259,8 +273,8 @@ func (g *gameStatus) drawPoints ( cr *cairo.Context ) {
 
 		cr.SetSourceRGB(0.6,0.4,0.3)
 		cr.SelectFontFace( "DejaVu Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)	
-		cr.MoveTo( 4, 40 )
-		cr.SetFontSize(40)
+		cr.MoveTo( 2, 40 )
+		cr.SetFontSize(32)
 		cr.ShowText( strconv.Itoa(g.points) )
 
 
@@ -391,7 +405,7 @@ func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
 	}
 	
 	if ( g.flagPause == 1) { 
-		cr.SetSourceRGB(255, 0, 0)
+		cr.SetSourceRGB(255, 2, 2)
 		cr.SelectFontFace( "Courier", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
 		
 		cr.MoveTo( float64(3) * float64(g.unitSizeX), float64(10) * float64(g.unitSizeY) )
@@ -401,6 +415,19 @@ func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
 		cr.SetFontSize(24)
 		cr.ShowText("Press P again to continue")
 	}
+	
+	if ( g.flagEnd == 1) { 
+		cr.SetSourceRGB(1, 0, 0)
+		cr.SelectFontFace( "Courier", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+		
+		cr.MoveTo( float64(1) * float64(g.unitSizeX), float64(10) * float64(g.unitSizeY) )
+		cr.SetFontSize(42)
+		cr.ShowText("G A M E  O V E R")
+		cr.MoveTo( float64(1) * float64(g.unitSizeX), float64(11) * float64(g.unitSizeY) )
+		cr.SetFontSize(24)
+		cr.ShowText("Press N to play again")
+	}
+	
 	
 }
 
@@ -425,10 +452,6 @@ func game( g * gameStatus, win *gtk.Window ) {
 		time.Sleep( time.Duration(g.speed) * time.Millisecond)
 		g.move ( KEY_DOWN )
 		win.QueueDraw()
-		if g.flagEnd == 1 {
-			fmt.Println ( "the end" )
-			return
-		}
 	}
 }
 
