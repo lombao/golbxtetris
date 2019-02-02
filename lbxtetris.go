@@ -21,8 +21,8 @@ const (
 )
 
 const (
-	WINX_SIZE	= 600
-	WINY_SIZE	= 800
+	WINX_SIZE	= 480
+	WINY_SIZE	= 880
 )
 
 const (
@@ -275,6 +275,8 @@ func (g *gameStatus) drawPoints ( cr *cairo.Context ) {
 		cr.SelectFontFace( "DejaVu Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)	
 		cr.MoveTo( 2, 40 )
 		cr.SetFontSize(32)
+		cr.ShowText( "POINTS  " )
+		cr.SetSourceRGB(0.8,0.2,0)
 		cr.ShowText( strconv.Itoa(g.points) )
 
 
@@ -470,16 +472,16 @@ func main() {
 
 	// Create a new grid widget to arrange child widgets
 	grid, _ := gtk.GridNew()
-	grid.SetColumnSpacing( 10 )
-	 
-	leftbox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL,20)
+	grid.SetRowSpacing( 10 )
+	grid.SetOrientation(gtk.ORIENTATION_VERTICAL)
 	
+	leftbox, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL,50)
 	
 	board, _ := gtk.DrawingAreaNew()
 	nextp, _ := gtk.DrawingAreaNew()
     nextp.SetSizeRequest(70,70)
     points,_ := gtk.DrawingAreaNew()
-    points.SetSizeRequest(70,70)
+    points.SetSizeRequest(300,70)
     
 	
 	leftbox.Add(nextp)
