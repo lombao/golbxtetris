@@ -15,6 +15,7 @@ const (
 	KEY_RIGHT uint = 65363
 	KEY_DOWN  uint = 65364
 	KEY_SPACE uint = 32
+	KEY_PAUSE uint = 112
 )
 
 const (
@@ -43,6 +44,7 @@ type gameStatus struct {
 	nextpunitSizeX  int
 	nextpunitSizeY  int
 	flagEnd	   int
+	flagPause  int
 	board [BOARD_X_BLOCKS+8][BOARD_Y_BLOCKS+8] int
 	piece [4][4] int
 	nextpiece [4][4] int
@@ -135,11 +137,6 @@ func (g *gameStatus) newpiece( ) {
 		case 18: g.nextpiece[1][2]  = p; g.nextpiece[2][2]  = p; g.nextpiece[3][2]  = p; g.nextpiece[3][3]  = p; 
 		case 19: g.nextpiece[2][1]  = p; g.nextpiece[2][2]  = p; g.nextpiece[2][3]  = p; g.nextpiece[1][3]  = p; 
 		
-		
-		
-		
-		
-		
 		default: fmt.Println("NOT DEFINED")
 	}
 	
@@ -202,6 +199,7 @@ func (g *gameStatus) move( dir uint ) {
 	var aux2[4][4] int
 	
 	if g.flagEnd == 1 { return }
+	if g.flagPause == 1 && dir != KEY_PAUSE { return } 
 	
 	switch dir {
 		case KEY_LEFT: 	g.posX = g.posX - 1
@@ -239,8 +237,17 @@ func (g *gameStatus) move( dir uint ) {
 						g.posY--
 						g.merge()
 						g.newpiece()
+						
+		case KEY_PAUSE:	if g.flagPause == 1 { 
+							g.flagPause = 0
+							fmt.Println("Resume")
+						} else { 
+							g.flagPause  = 1 
+							fmt.Println("Pause")
+						}
+						
 
-		default:	fmt.Println (" Tecla ",dir )  
+		default:	fmt.Println (" Key Press ",dir )  
 	}
 }
 
@@ -301,6 +308,7 @@ func (g *gameStatus) drawNextPiece ( cr *cairo.Context ) {
 }
 
 func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
+	
 	
 	for x:= 4 ; x < BOARD_X_BLOCKS  + 4; x++ {
 		for y:=4 ; y < BOARD_Y_BLOCKS + 4; y++ {
@@ -364,6 +372,18 @@ func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
     
 	}
 	
+	if ( g.flagPause == 1) { 
+		cr.SetSourceRGB(255, 0, 0)
+		cr.SelectFontFace( "Courier", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+		
+		cr.MoveTo( float64(3) * float64(g.unitSizeX), float64(10) * float64(g.unitSizeY) )
+		cr.SetFontSize(42)
+		cr.ShowText("PAUSE")
+		cr.MoveTo( float64(1) * float64(g.unitSizeX), float64(11) * float64(g.unitSizeY) )
+		cr.SetFontSize(24)
+		cr.ShowText("Press P again to continue")
+	}
+	
 }
 
 
@@ -399,7 +419,7 @@ func main() {
 
 
 	win, _ := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
-	win.SetTitle("Simple Example")
+	win.SetTitle("GO LBX TETRIS")
 	win.Connect("destroy", func() {
 		gtk.MainQuit()
 	})
