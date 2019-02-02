@@ -4,6 +4,7 @@ import (
 	"time"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"github.com/gotk3/gotk3/cairo"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
@@ -50,6 +51,7 @@ type gameStatus struct {
 	nextpiece [4][4] int
 	posX	int
 	posY	int
+	points 	int
 }
 
 
@@ -129,12 +131,12 @@ func (g *gameStatus) newpiece( ) {
 		
 		case 12: g.nextpiece[1][2]  = p; g.nextpiece[2][2]  = p; g.nextpiece[3][2]  = p; g.nextpiece[3][1]  = p; 
 		case 13: g.nextpiece[1][1]  = p; g.nextpiece[2][1]  = p; g.nextpiece[2][2]  = p; g.nextpiece[2][3]  = p; 
-		case 14: g.nextpiece[1][2]  = p; g.nextpiece[2][2]  = p; g.nextpiece[3][2]  = p; g.nextpiece[1][3]  = p; 
-		case 15: g.nextpiece[2][1]  = p; g.nextpiece[2][2]  = p; g.nextpiece[2][3]  = p; g.nextpiece[3][3]  = p; 
+		case 14: g.nextpiece[1][1]  = p; g.nextpiece[2][1]  = p; g.nextpiece[3][1]  = p; g.nextpiece[1][2]  = p; 
+		case 15: g.nextpiece[1][1]  = p; g.nextpiece[1][2]  = p; g.nextpiece[1][3]  = p; g.nextpiece[2][3]  = p; 
 		
 		case 16: g.nextpiece[1][1]  = p; g.nextpiece[1][2]  = p; g.nextpiece[2][2]  = p; g.nextpiece[3][2]  = p; 
 		case 17: g.nextpiece[2][1]  = p; g.nextpiece[2][2]  = p; g.nextpiece[2][3]  = p; g.nextpiece[3][1]  = p; 
-		case 18: g.nextpiece[1][2]  = p; g.nextpiece[2][2]  = p; g.nextpiece[3][2]  = p; g.nextpiece[3][3]  = p; 
+		case 18: g.nextpiece[1][1]  = p; g.nextpiece[2][1]  = p; g.nextpiece[3][1]  = p; g.nextpiece[3][2]  = p; 
 		case 19: g.nextpiece[2][1]  = p; g.nextpiece[2][2]  = p; g.nextpiece[2][3]  = p; g.nextpiece[1][3]  = p; 
 		
 		default: fmt.Println("NOT DEFINED")
@@ -142,6 +144,8 @@ func (g *gameStatus) newpiece( ) {
 	
 	g.posY = 0
 	g.posX = ( (BOARD_X_BLOCKS+8) / 2 ) - 4
+	
+	g.points++
 	
 } 
 
@@ -250,6 +254,20 @@ func (g *gameStatus) move( dir uint ) {
 		default:	fmt.Println (" Key Press ",dir )  
 	}
 }
+
+func (g *gameStatus) drawPoints ( cr *cairo.Context ) {
+
+		cr.SetSourceRGB(0.6,0.4,0.3)
+		cr.SelectFontFace( "DejaVu Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)	
+		cr.MoveTo( 4, 40 )
+		cr.SetFontSize(40)
+		cr.ShowText( strconv.Itoa(g.points) )
+
+
+
+}
+
+
 
 func (g *gameStatus) drawNextPiece ( cr *cairo.Context ) {
 
@@ -429,6 +447,7 @@ func main() {
 
 	// Create a new grid widget to arrange child widgets
 	grid, _ := gtk.GridNew()
+	grid.SetColumnSpacing( 10 )
 	 
 	leftbox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL,20)
 	
@@ -436,12 +455,13 @@ func main() {
 	board, _ := gtk.DrawingAreaNew()
 	nextp, _ := gtk.DrawingAreaNew()
     nextp.SetSizeRequest(70,70)
-
-	lab, _ := gtk.LabelNew("GO LBX TETRIS")
-
-	leftbox.Add(lab)
+    points,_ := gtk.DrawingAreaNew()
+    points.SetSizeRequest(70,70)
+    
+	
 	leftbox.Add(nextp)
-	//nextp.SetSizeRequest(180,180)
+	leftbox.Add(points)
+
 	
 	grid.Add(leftbox)
 	grid.Add(board)
@@ -458,8 +478,12 @@ func main() {
 
 	
 	// Sizes
-	gs := gameStatus{  speed: INITIAL_SPEED_GAME, boardxsize: board.GetAllocatedWidth( ), boardysize: board.GetAllocatedHeight( ), nextpxsize: nextp.GetAllocatedWidth( ), nextpysize: nextp.GetAllocatedHeight( ),  }
-	fmt.Println ( "allocated size for board",board.GetAllocatedWidth( ), board.GetAllocatedHeight( ))
+	gs := gameStatus{  	speed: INITIAL_SPEED_GAME, 
+						boardxsize: board.GetAllocatedWidth( ), 
+						boardysize: board.GetAllocatedHeight( ), 
+						nextpxsize: nextp.GetAllocatedWidth( ), 
+						nextpysize: nextp.GetAllocatedHeight( ),
+					}
 	gs.calculateUnitSize()
 	gs.firstpiece()
 	gs.newpiece()
@@ -471,6 +495,9 @@ func main() {
 	})
 	nextp.Connect("draw", func(nextp *gtk.DrawingArea, cr *cairo.Context) {
 		gs.drawNextPiece(cr);
+	})
+	points.Connect("draw", func(points *gtk.DrawingArea, cr *cairo.Context) {
+		gs.drawPoints(cr);
 	})
 	win.Connect("key-press-event", func(win *gtk.Window, ev *gdk.Event) {
 		keyEvent := &gdk.EventKey{ev}
