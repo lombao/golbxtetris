@@ -36,8 +36,12 @@ type gameStatus struct {
 	speed int
 	boardxsize int
 	boardysize int
+	nextpxsize int
+	nextpysize int
 	unitSizeX  int
 	unitSizeY  int
+	nextpunitSizeX  int
+	nextpunitSizeY  int
 	flagEnd	   int
 	board [BOARD_X_BLOCKS+8][BOARD_Y_BLOCKS+8] int
 	piece [4][4] int
@@ -240,7 +244,61 @@ func (g *gameStatus) move( dir uint ) {
 	}
 }
 
+func (g *gameStatus) drawNextPiece ( cr *cairo.Context ) {
 
+		
+	for x:= 0 ; x < 4  ; x++ {
+		for y:=0 ; y < 4 ; y++ {
+			cell := g.nextpiece[x][y]
+			switch ( cell ) {
+				case 0:
+						cr.SetSourceRGB(0, 0, 0)
+						cr.Rectangle(float64(x) * float64(g.nextpunitSizeX), float64(y) * float64(g.nextpunitSizeY), float64(g.nextpunitSizeX), float64(g.nextpunitSizeY)  )
+						cr.Fill()
+						
+						
+				case 1,2: 
+						cr.SetSourceRGB(0.3, 0.3, 0.7)
+						cr.Rectangle(float64(x) * float64(g.nextpunitSizeX), float64(y) * float64(g.nextpunitSizeY), float64(g.nextpunitSizeX)- 1, float64(g.nextpunitSizeY) - 1 )
+						cr.Fill()
+						
+				case 3: cr.SetSourceRGB(0.4, 0.7, 0.2)
+						cr.Rectangle(float64(x) * float64(g.nextpunitSizeX), float64(y) * float64(g.nextpunitSizeY), float64(g.nextpunitSizeX)- 1, float64(g.nextpunitSizeY) - 1 )
+						cr.Fill()
+						
+						
+				case 4, 5: 
+						cr.SetSourceRGB(0.2, 0.7, 0.9)
+						cr.Rectangle(float64(x) * float64(g.nextpunitSizeX), float64(y) * float64(g.nextpunitSizeY), float64(g.nextpunitSizeX)- 1, float64(g.nextpunitSizeY) - 1 )
+						cr.Fill()
+						
+				case 6,7,8, 9:  
+						cr.SetSourceRGB(0.5, 0.3, 0.8)
+						cr.Rectangle(float64(x) * float64(g.nextpunitSizeX), float64(y) * float64(g.nextpunitSizeY), float64(g.nextpunitSizeX)- 1, float64(g.nextpunitSizeY) - 1 )
+						cr.Fill()	
+						
+				case 10,11: 
+						cr.SetSourceRGB(0.7, 0.1, 0.1)
+						cr.Rectangle(float64(x) * float64(g.nextpunitSizeX), float64(y) * float64(g.nextpunitSizeY), float64(g.nextpunitSizeX)- 1, float64(g.nextpunitSizeY) - 1 )
+						cr.Fill()	
+						
+				case 12,13,14,15:
+						cr.SetSourceRGB(0.3, 0.9, 0.4)
+						cr.Rectangle(float64(x) * float64(g.nextpunitSizeX), float64(y) * float64(g.nextpunitSizeY), float64(g.nextpunitSizeX)- 1, float64(g.nextpunitSizeY) - 1 )
+						cr.Fill()	
+						
+				case 16,17,18,19:
+						cr.SetSourceRGB(0.6, 0.3, 0.2)
+						cr.Rectangle(float64(x) * float64(g.nextpunitSizeX), float64(y) * float64(g.nextpunitSizeY), float64(g.nextpunitSizeX)- 1, float64(g.nextpunitSizeY) - 1 )
+						cr.Fill()	
+						
+				default:cr.SetSourceRGB(0.5, 0.5, 0.5)
+						cr.Rectangle(float64(x) * float64(g.nextpunitSizeX), float64(y) * float64(g.nextpunitSizeY), float64(g.nextpunitSizeX)- 1, float64(g.nextpunitSizeY) - 1 )
+						cr.Fill() 			
+			}
+		}
+	}
+}
 
 func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
 	
@@ -254,10 +312,14 @@ func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
 
 			switch ( cell ) {
 				case 0:
-						cr.SetSourceRGB(0, 0, 0)
-						cr.Rectangle(float64(x-4) * float64(g.unitSizeX), float64(y-4) * float64(g.unitSizeY), float64(g.unitSizeX), float64(g.unitSizeY)  )
+						cr.SetSourceRGB(255, 0, 0)
+						cr.Rectangle(float64(x-4) * float64(g.unitSizeX)  , float64(y-4) * float64(g.unitSizeY) , float64(g.unitSizeX) , float64(g.unitSizeY)  )
 						cr.Fill()
-						
+						cr.SetSourceRGB(0, 0, 0)
+						cr.Rectangle(float64(x-4) * float64(g.unitSizeX) - 0.3 , float64(y-4) * float64(g.unitSizeY) , float64(g.unitSizeX) , float64(g.unitSizeY)  )
+						cr.Fill()
+						cr.SetSourceRGB(255, 1, 1)
+				
 						
 				case 1,2: 
 						cr.SetSourceRGB(0.3, 0.3, 0.7)
@@ -314,7 +376,8 @@ func (g *gameStatus) calculateUnitSize () {
 	g.unitSizeX = g.boardxsize / BOARD_X_BLOCKS
 	g.unitSizeY = g.boardysize / BOARD_Y_BLOCKS
 	
-	fmt.Println( "Size Blocks: ",g.unitSizeX,g.unitSizeY)
+	g.nextpunitSizeX = g.nextpxsize / 4
+	g.nextpunitSizeY = g.nextpysize / 4
 	
 }
 
@@ -346,20 +409,28 @@ func main() {
 
 	// Create a new grid widget to arrange child widgets
 	grid, _ := gtk.GridNew()
-	//grid.SetOrientation(gtk.ORIENTATION_VERTICAL)
+	 
+	leftbox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL,20)
 	
 	
 	board, _ := gtk.DrawingAreaNew()
-	
+	nextp, _ := gtk.DrawingAreaNew()
+    nextp.SetSizeRequest(70,70)
+
 	lab, _ := gtk.LabelNew("GO LBX TETRIS")
 
-	grid.Add(lab)
-	grid.Add(board)
+	leftbox.Add(lab)
+	leftbox.Add(nextp)
+	//nextp.SetSizeRequest(180,180)
 	
+	grid.Add(leftbox)
+	grid.Add(board)
+			
 	board.SetHExpand(true)
 	board.SetVExpand(true)
 
-
+	
+	
 
 	// Recursively show all widgets contained in this window.
 	win.Add(grid)
@@ -367,7 +438,7 @@ func main() {
 
 	
 	// Sizes
-	gs := gameStatus{  speed: INITIAL_SPEED_GAME, boardxsize: board.GetAllocatedWidth( ), boardysize: board.GetAllocatedHeight( ) }
+	gs := gameStatus{  speed: INITIAL_SPEED_GAME, boardxsize: board.GetAllocatedWidth( ), boardysize: board.GetAllocatedHeight( ), nextpxsize: nextp.GetAllocatedWidth( ), nextpysize: nextp.GetAllocatedHeight( ),  }
 	fmt.Println ( "allocated size for board",board.GetAllocatedWidth( ), board.GetAllocatedHeight( ))
 	gs.calculateUnitSize()
 	gs.firstpiece()
@@ -377,6 +448,9 @@ func main() {
 		
 	board.Connect("draw", func(board *gtk.DrawingArea, cr *cairo.Context) {
 		gs.drawBoard(cr);
+	})
+	nextp.Connect("draw", func(nextp *gtk.DrawingArea, cr *cairo.Context) {
+		gs.drawNextPiece(cr);
 	})
 	win.Connect("key-press-event", func(win *gtk.Window, ev *gdk.Event) {
 		keyEvent := &gdk.EventKey{ev}
