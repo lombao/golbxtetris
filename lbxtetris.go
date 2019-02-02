@@ -56,17 +56,26 @@ func (g *gameStatus) newpiece( ) {
 	
 	s := rand.NewSource(time.Now().UnixNano())
     r := rand.New(s)
-    p := (r.Intn(8) + 1) 
+    p := (r.Intn(11) + 1) 
     
 	switch (p) {
 		case 1:	g.piece[1][2]  = p; g.piece[2][2]  = p; g.piece[2][1]  = p; g.piece[3][1]  = p; 
 		case 2: g.piece[1][0]  = p; g.piece[1][1]  = p; g.piece[2][1]  = p; g.piece[2][2]  = p; 
+		
 		case 3: g.piece[1][1]  = p; g.piece[2][1]  = p; g.piece[1][2]  = p; g.piece[2][2]  = p; 
+		
 		case 4: g.piece[1][1]  = p; g.piece[2][1]  = p; g.piece[2][2]  = p; g.piece[3][2]  = p; 
 	   	case 5: g.piece[2][0]  = p; g.piece[1][1]  = p; g.piece[2][1]  = p; g.piece[1][2]  = p; 
+	   	
 		case 6: g.piece[2][1]  = p; g.piece[2][2]  = p; g.piece[1][2]  = p; g.piece[3][2]  = p; 
 	    case 7: g.piece[2][0]  = p; g.piece[2][1]  = p; g.piece[2][2]  = p; g.piece[3][1]  = p; 
 		case 8: g.piece[1][1]  = p; g.piece[2][1]  = p; g.piece[3][1]  = p; g.piece[2][2]  = p; 
+		case 9: g.piece[2][0]  = p; g.piece[2][1]  = p; g.piece[2][2]  = p; g.piece[1][1]  = p; 
+		
+		case 10: g.piece[0][1]  = p; g.piece[1][1]  = p; g.piece[2][1]  = p; g.piece[3][1]  = p; 
+		case 11: g.piece[2][0]  = p; g.piece[2][1]  = p; g.piece[2][2]  = p; g.piece[2][3]  = p; 
+		
+		
 		default: fmt.Println("NOT DEFINED")
 	}
 	
@@ -81,6 +90,7 @@ func (g *gameStatus) checkMove ( ) int {
 	for  x:=g.posX ; x < g.posX + 4 ; x++  {
 		for y := g.posY ; y < g.posY + 4 ; y++ {
 			if g.board[x][y] != 0 && g.piece[x-g.posX][y-g.posY] != 0 {
+				if g.posY <= 2 { g.flagEnd = 1 }
 				return 1
 			}
 			if g.piece[x-g.posX][y-g.posY] != 0 {
@@ -110,6 +120,8 @@ func (g *gameStatus) move( dir uint ) {
 	var aux1[4][4] int
 	var aux2[4][4] int
 	
+	if g.flagEnd == 1 { return }
+	
 	switch dir {
 		case KEY_LEFT: 	g.posX = g.posX - 1
 						if g.checkMove() == 1 { g.posX++ }
@@ -120,7 +132,11 @@ func (g *gameStatus) move( dir uint ) {
 																		
 		case KEY_DOWN:  g.posY++
 						if g.checkMove() == 1 { 
-							fmt.Println ( "we reach the end") 
+							if  g.flagEnd == 1 {
+								g.posY--
+								fmt.Println ( "G A M E  O V E R")
+								return
+							}
 							g.posY--
 							g.merge()
 							g.newpiece()
@@ -160,21 +176,37 @@ func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
 			}
 
 			switch ( cell ) {
-				case 0: cr.SetSourceRGB(0, 0, 0)
+				case 0:
+						cr.SetSourceRGB(0, 0, 0)
 						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
 						cr.Fill()
-				case 1: cr.SetSourceRGB(0.7, 0, 0.1)
+						
+						
+				case 1,2: 
+						cr.SetSourceRGB(0.3, 0.3, 0.7)
 						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
 						cr.Fill()
-				case 2: cr.SetSourceRGB(0.3, 0.3, 0.7)
+						
+				case 3: cr.SetSourceRGB(0.4, 0.7, 0.2)
 						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
 						cr.Fill()
-				case 3: cr.SetSourceRGB(0.5, 0.1, 0.6)
+						
+						
+				case 4, 5: 
+						cr.SetSourceRGB(0.2, 0.7, 0.9)
 						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
 						cr.Fill()
-				case 4: cr.SetSourceRGB(0.2, 0.7, 0.9)
+						
+				case 6,7,8, 9:  
+						cr.SetSourceRGB(0.5, 0.3, 0.8)
 						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
-						cr.Fill()
+						cr.Fill()	
+						
+				case 10,11: 
+						cr.SetSourceRGB(0.7, 0.1, 0.1)
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Fill()	
+						
 				default:cr.SetSourceRGB(0.5, 0.5, 0.5)
 						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
 						cr.Fill() 			
