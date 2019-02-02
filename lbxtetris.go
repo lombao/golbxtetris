@@ -101,7 +101,6 @@ func (g *gameStatus) checkMove ( ) int {
 			
 		}
 	}
-	fmt.Println ( "Returing checkmove 0")
 	return 0
 }
 
@@ -112,6 +111,26 @@ func (g *gameStatus) merge (  ) {
 		for y := g.posY ; y < g.posY + 4 ; y++ {
 			g.board[x][y] = g.board[x][y] + g.piece[x-g.posX][y-g.posY]
 		}
+	}
+
+	
+	k := 1
+	for y := BOARD_Y_BLOCKS + 2 ; y >= 2 ; y-- {
+		k = 1
+		for x:= 2 ;x < BOARD_X_BLOCKS + 2; x++ {
+			k = k * g.board[x][y]
+			fmt.Println ( "value ",g.board[x][y],"En position ",x,y," K is now",k)
+		}
+		fmt.Println ( "Value of k",k)
+		if k != 0 {
+			for hy := y ; hy >= 2 ; hy -- {
+				for hx := 2; hx < BOARD_X_BLOCKS + 2; hx++ {
+					g.board[hx][hy] = g.board[hx][hy-1]
+				}
+			}
+			y++
+		}
+		
 	}
 }
 
@@ -178,37 +197,37 @@ func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
 			switch ( cell ) {
 				case 0:
 						cr.SetSourceRGB(0, 0, 0)
-						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX), float64(g.unitSizeY)  )
 						cr.Fill()
 						
 						
 				case 1,2: 
 						cr.SetSourceRGB(0.3, 0.3, 0.7)
-						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 1, float64(g.unitSizeY) - 1 )
 						cr.Fill()
 						
 				case 3: cr.SetSourceRGB(0.4, 0.7, 0.2)
-						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 1, float64(g.unitSizeY) - 1 )
 						cr.Fill()
 						
 						
 				case 4, 5: 
 						cr.SetSourceRGB(0.2, 0.7, 0.9)
-						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 1, float64(g.unitSizeY) - 1 )
 						cr.Fill()
 						
 				case 6,7,8, 9:  
 						cr.SetSourceRGB(0.5, 0.3, 0.8)
-						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 1, float64(g.unitSizeY) - 1 )
 						cr.Fill()	
 						
 				case 10,11: 
 						cr.SetSourceRGB(0.7, 0.1, 0.1)
-						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 1, float64(g.unitSizeY) - 1 )
 						cr.Fill()	
 						
 				default:cr.SetSourceRGB(0.5, 0.5, 0.5)
-						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 0.018, float64(g.unitSizeY) - 0.015 )
+						cr.Rectangle(float64(x-2) * float64(g.unitSizeX), float64(y-2) * float64(g.unitSizeY), float64(g.unitSizeX)- 1, float64(g.unitSizeY) - 1 )
 						cr.Fill() 			
 			}
 		}
@@ -226,6 +245,8 @@ func (g *gameStatus) calculateUnitSize () {
 	
 	g.unitSizeX = g.boardxsize / BOARD_X_BLOCKS
 	g.unitSizeY = g.boardysize / BOARD_Y_BLOCKS
+	
+	fmt.Println( "Size Blocks: ",g.unitSizeX,g.unitSizeY)
 	
 }
 
