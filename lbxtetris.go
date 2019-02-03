@@ -29,6 +29,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"bufio"
+	"sync"
 	"github.com/gotk3/gotk3/cairo"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
@@ -51,7 +52,7 @@ const (
 
 const (
 	INITIAL_SPEED_GAME	=	500
-	SPEED_INCREMENT		=	20
+	SPEED_DECREMENT		=	30
 )
 
 const (
@@ -145,6 +146,7 @@ type gameStatus struct {
 	posY	int
 	points 	int
 	maxpoints int
+	mux	sync.Mutex
 }
 
 
@@ -280,7 +282,8 @@ func (g *gameStatus) merge (  ) {
 		}
 		if k != 0 {
 			g.points += 10
-			g.speed--
+			g.speed = g.speed - SPEED_DECREMENT
+			fmt.Println("Speed: ",g.speed)
 			for hy := y ; hy >= 4 ; hy -- {
 				for hx := 4; hx < BOARD_X_BLOCKS + 4; hx++ {
 					g.board[hx][hy] = g.board[hx][hy-1]
@@ -293,6 +296,9 @@ func (g *gameStatus) merge (  ) {
 }
 
 func (g *gameStatus) move( dir uint ) {
+	
+	g.mux.Lock()
+	defer g.mux.Unlock()
 	
 	var aux1[4][4] int
 	var aux2[4][4] int
@@ -365,7 +371,9 @@ func (g *gameStatus) move( dir uint ) {
 
 func (g *gameStatus) drawPoints ( cr *cairo.Context ) {
 
-
+	g.mux.Lock()
+	defer g.mux.Unlock()
+	
 		cr.SelectFontFace( "DejaVu Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)	
 		cr.MoveTo( 2, 40 )
 		cr.SetFontSize(20)
@@ -388,6 +396,8 @@ func (g *gameStatus) drawPoints ( cr *cairo.Context ) {
 
 func (g *gameStatus) drawNextPiece ( cr *cairo.Context ) {
 
+	g.mux.Lock()
+	defer g.mux.Unlock()
 		
 	for x:= 0 ; x < 4  ; x++ {
 		for y:=0 ; y < 4 ; y++ {
@@ -444,6 +454,8 @@ func (g *gameStatus) drawNextPiece ( cr *cairo.Context ) {
 
 func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
 	
+	g.mux.Lock()
+	defer g.mux.Unlock()
 	
 	for x:= 4 ; x < BOARD_X_BLOCKS  + 4; x++ {
 		for y:=4 ; y < BOARD_Y_BLOCKS + 4; y++ {
@@ -653,8 +665,8 @@ func main() {
 	win.Connect("key-press-event", func(win *gtk.Window, ev *gdk.Event) {
 		keyEvent := &gdk.EventKey{ev}
 		gs.move( keyEvent.KeyVal() )
-		win.QueueDraw()
 		
+		win.QueueDraw()	
 	})
 
 
