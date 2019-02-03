@@ -1,3 +1,22 @@
+/*
+ * Copyright (c) 2019 Cesar Lombao <cesar.lombao@gmail.com>
+ *
+ * This code can be fouind at https://github.com/lombao/golbxtetris
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+
 package main
 
 import (
@@ -5,6 +24,11 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"strings"
+	"os"
+	"os/user"
+	"path/filepath"
+	"bufio"
 	"github.com/gotk3/gotk3/cairo"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
@@ -35,6 +59,72 @@ const (
 	BOARD_Y_BLOCKS	=	20
 ) 
 
+
+
+////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+
+const (
+	MAX_NUM_HOF_ENTRIES = 5
+	FILE_HOF	=	".lbxgames/tetris.dat"
+)
+
+type hallOfFame struct {
+	name [MAX_NUM_HOF_ENTRIES] string
+	points [MAX_NUM_HOF_ENTRIES] int
+}
+
+
+func (h *hallOfFame) readRecords () {
+	
+	usr, _ := user.Current()
+	homedir := usr.HomeDir
+	file := filepath.Join(homedir, FILE_HOF)
+	
+	for a:=0; a<MAX_NUM_HOF_ENTRIES; a++ {
+			h.name[a] = "_"
+			h.points[a] = 0 
+	}
+	
+	if _, err := os.Stat(file); err == nil {
+		// path/to/whatever exists
+		file, _ := os.Open(file)
+		defer file.Close()
+		scanner := bufio.NewScanner(file)
+		a:=0
+		for scanner.Scan() {
+			l := scanner.Text()
+			words := strings.Fields(l)
+			h.name[a] = words[0]
+			h.points[a],_ = strconv.Atoi(words[1])
+			a++
+		}	
+
+	} 	
+}
+
+func (h *hallOfFame) writeRecords () {
+	
+	usr, _ := user.Current()
+	homedir := usr.HomeDir
+	file := filepath.Join(homedir, FILE_HOF)
+	 
+	f, _ := os.Create(file)
+    defer f.Close() 
+    
+    for a:=0 ; a<MAX_NUM_HOF_ENTRIES; a++ {
+		p := strconv.Itoa(h.points[a])
+		k := h.name[a] + " " + p + "\n"
+		f.WriteString(k)
+	}
+	f.Sync()
+}
+
+
+
+////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+
 type gameStatus struct {
 	speed int
 	boardxsize int
@@ -47,12 +137,14 @@ type gameStatus struct {
 	nextpunitSizeY  int
 	flagEnd	   int
 	flagPause  int
+	flagDataW  int
 	board [BOARD_X_BLOCKS+8][BOARD_Y_BLOCKS+8] int
 	piece [4][4] int
 	nextpiece [4][4] int
 	posX	int
 	posY	int
 	points 	int
+	maxpoints int
 }
 
 
@@ -188,6 +280,7 @@ func (g *gameStatus) merge (  ) {
 		}
 		if k != 0 {
 			g.points += 10
+			g.speed--
 			for hy := y ; hy >= 4 ; hy -- {
 				for hx := 4; hx < BOARD_X_BLOCKS + 4; hx++ {
 					g.board[hx][hy] = g.board[hx][hy-1]
@@ -257,6 +350,7 @@ func (g *gameStatus) move( dir uint ) {
 						if g.flagEnd == 1 {
 								g.flagEnd = 0 
 								g.points = 0 
+								g.flagDataW = 0
 								for x:=0 ; x < BOARD_X_BLOCKS + 8; x++ {
 									for y:=0 ; y< BOARD_Y_BLOCKS + 8 ; y++ {
 										g.board[x][y] = 0
@@ -271,13 +365,20 @@ func (g *gameStatus) move( dir uint ) {
 
 func (g *gameStatus) drawPoints ( cr *cairo.Context ) {
 
-		cr.SetSourceRGB(0.6,0.4,0.3)
+
 		cr.SelectFontFace( "DejaVu Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)	
 		cr.MoveTo( 2, 40 )
-		cr.SetFontSize(32)
-		cr.ShowText( "POINTS  " )
+		cr.SetFontSize(20)
+		cr.SetSourceRGB(0.6,0.4,0.3)
+		cr.ShowText( "POINTS " )
 		cr.SetSourceRGB(0.8,0.2,0)
 		cr.ShowText( strconv.Itoa(g.points) )
+		cr.ShowText( "   " )
+		cr.SetSourceRGB(0.6,0.4,0.3)
+		cr.ShowText( "RECORD " )
+		cr.SetSourceRGB(0.8,0.2,0)
+		cr.ShowText( strconv.Itoa(g.maxpoints) )
+		
 
 
 
@@ -433,11 +534,6 @@ func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
 	
 }
 
-
-func (g *gameStatus) increaseSpeed ( ) {
-	g.speed = g.speed - SPEED_INCREMENT
-}
-
 func (g *gameStatus) calculateUnitSize () {
 	
 	g.unitSizeX = g.boardxsize / BOARD_X_BLOCKS
@@ -448,16 +544,45 @@ func (g *gameStatus) calculateUnitSize () {
 	
 }
 
-func game( g * gameStatus, win *gtk.Window ) {
+func game( g * gameStatus, win *gtk.Window , hof * hallOfFame) {
 	
 	for {
+		if  g.flagEnd == 1  {
+			g.maxpoints = hof.points[0]
+			if g.flagDataW == 0 {
+				L:
+				for k :=0 ; k < MAX_NUM_HOF_ENTRIES ; k++ {
+					if g.points > hof.points[k] {
+						for z := MAX_NUM_HOF_ENTRIES - 1; z > k ; z-- {
+							hof.name[z] = hof.name[z-1]
+							hof.points[z] = hof.points[z-1]
+						}
+						hof.name[k] = "_"
+						hof.points[k] = g.points
+						hof.writeRecords()
+						g.flagDataW = 1
+						break L
+					}
+				}
+			} 	
+		} 
+		
 		time.Sleep( time.Duration(g.speed) * time.Millisecond)
-		g.move ( KEY_DOWN )
-		win.QueueDraw()
+		
+		if g.flagEnd == 0 {
+			g.move ( KEY_DOWN )
+			win.QueueDraw()
+		}
+		
 	}
 }
 
 func main() {
+
+	hof := hallOfFame { }
+	hof.readRecords()
+
+
 	gtk.Init(nil)
 
 
@@ -512,6 +637,7 @@ func main() {
 	gs.calculateUnitSize()
 	gs.firstpiece()
 	gs.newpiece()
+	gs.maxpoints = hof.points[0]
 
 	// Event handlers
 		
@@ -533,7 +659,7 @@ func main() {
 
 
 
-	go game(&gs,win)
+	go game(&gs,win,&hof)
 
 	// Begin executing the GTK main loop.  This blocks until
 	// gtk.MainQuit() is run. 
