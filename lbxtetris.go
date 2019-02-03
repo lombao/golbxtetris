@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
-	"strings"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -43,6 +42,7 @@ const (
 	KEY_SPACE 	uint = 32
 	KEY_PAUSE 	uint = 112
 	KEY_NEWGAME uint = 110
+	KEY_SHOWHOF uint = 114
 )
 
 const (
@@ -52,7 +52,7 @@ const (
 
 const (
 	INITIAL_SPEED_GAME	=	500
-	SPEED_DECREMENT		=	30
+	SPEED_DECREMENT		=	10
 )
 
 const (
@@ -70,41 +70,26 @@ const (
 	FILE_HOF	=	".lbxgames/tetris.dat"
 )
 
-type hallOfFame struct {
-	name [MAX_NUM_HOF_ENTRIES] string
-	points [MAX_NUM_HOF_ENTRIES] int
-}
 
-
-func (h *hallOfFame) readRecords () {
+func (g * gameStatus) readRecord () {
 	
 	usr, _ := user.Current()
 	homedir := usr.HomeDir
 	file := filepath.Join(homedir, FILE_HOF)
-	
-	for a:=0; a<MAX_NUM_HOF_ENTRIES; a++ {
-			h.name[a] = "_"
-			h.points[a] = 0 
-	}
 	
 	if _, err := os.Stat(file); err == nil {
 		// path/to/whatever exists
 		file, _ := os.Open(file)
 		defer file.Close()
 		scanner := bufio.NewScanner(file)
-		a:=0
 		for scanner.Scan() {
 			l := scanner.Text()
-			words := strings.Fields(l)
-			h.name[a] = words[0]
-			h.points[a],_ = strconv.Atoi(words[1])
-			a++
+			g.maxpoints, _ = strconv.Atoi(l)
 		}	
-
 	} 	
 }
 
-func (h *hallOfFame) writeRecords () {
+func (g *gameStatus) writeRecord () {
 	
 	usr, _ := user.Current()
 	homedir := usr.HomeDir
@@ -113,11 +98,10 @@ func (h *hallOfFame) writeRecords () {
 	f, _ := os.Create(file)
     defer f.Close() 
     
-    for a:=0 ; a<MAX_NUM_HOF_ENTRIES; a++ {
-		p := strconv.Itoa(h.points[a])
-		k := h.name[a] + " " + p + "\n"
+		p := strconv.Itoa(g.maxpoints)
+		k := p + "\n"
 		f.WriteString(k)
-	}
+		
 	f.Sync()
 }
 
@@ -138,7 +122,7 @@ type gameStatus struct {
 	nextpunitSizeY  int
 	flagEnd	   int
 	flagPause  int
-	flagDataW  int
+	flagShowHof int
 	board [BOARD_X_BLOCKS+8][BOARD_Y_BLOCKS+8] int
 	piece [4][4] int
 	nextpiece [4][4] int
@@ -303,9 +287,9 @@ func (g *gameStatus) move( dir uint ) {
 	var aux1[4][4] int
 	var aux2[4][4] int
 	
-	if g.flagEnd == 1 && dir != KEY_NEWGAME { return }
-	if g.flagPause == 1 && dir != KEY_PAUSE { return } 
-	
+	if g.flagEnd == 1 && dir != KEY_NEWGAME 	{ return }
+	if g.flagPause == 1 && dir != KEY_PAUSE 	{ return } 
+	if g.flagShowHof == 1 && ( dir != KEY_SHOWHOF && dir != KEY_NEWGAME ) { return } 
 	
 	switch dir {
 		case KEY_LEFT: 	g.posX = g.posX - 1
@@ -351,12 +335,21 @@ func (g *gameStatus) move( dir uint ) {
 							g.flagPause  = 1 
 							fmt.Println("Pause")
 						}
+		
+		case KEY_SHOWHOF:	if g.flagShowHof == 1 { 
+							g.flagShowHof = 0
+							fmt.Println("Resume")
+						} else { 
+							g.flagShowHof  = 1 
+							fmt.Println("Pause")
+						}
 						
 		case KEY_NEWGAME: 
 						if g.flagEnd == 1 {
 								g.flagEnd = 0 
+								g.flagPause = 0
+								g.flagShowHof = 0 
 								g.points = 0 
-								g.flagDataW = 0
 								for x:=0 ; x < BOARD_X_BLOCKS + 8; x++ {
 									for y:=0 ; y< BOARD_Y_BLOCKS + 8 ; y++ {
 										g.board[x][y] = 0
@@ -519,7 +512,7 @@ func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
     
 	}
 	
-	if ( g.flagPause == 1) { 
+	if  g.flagPause == 1 { 
 		cr.SetSourceRGB(255, 2, 2)
 		cr.SelectFontFace( "Courier", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
 		
@@ -531,20 +524,36 @@ func (g *gameStatus) drawBoard ( cr *cairo.Context ) {
 		cr.ShowText("Press P again to continue")
 	}
 	
-	if ( g.flagEnd == 1) { 
+	if  g.flagEnd == 1 { 
 		cr.SetSourceRGB(1, 0, 0)
 		cr.SelectFontFace( "Courier", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
 		
-		cr.MoveTo( float64(1) * float64(g.unitSizeX), float64(10) * float64(g.unitSizeY) )
+		cr.MoveTo( float64(1) * float64(g.unitSizeX), float64(4) * float64(g.unitSizeY) )
 		cr.SetFontSize(42)
 		cr.ShowText("G A M E  O V E R")
-		cr.MoveTo( float64(1) * float64(g.unitSizeX), float64(11) * float64(g.unitSizeY) )
+		cr.MoveTo( float64(1) * float64(g.unitSizeX), float64(5) * float64(g.unitSizeY) )
 		cr.SetFontSize(24)
 		cr.ShowText("Press N to play again")
 	}
 	
+	if g.flagShowHof == 1 {
+		cr.SelectFontFace( "Courier", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+		cr.SetSourceRGB(0, 0, 1)
+		cr.MoveTo( float64(1) * float64(g.unitSizeX), float64(7) * float64(g.unitSizeY) )
+		cr.SetFontSize(42)
+		cr.ShowText("NEW RECORD")
+		cr.SetFontSize(32)
+		cr.MoveTo( float64(1) * float64(g.unitSizeX), float64(8) * float64(g.unitSizeY) )
+		cr.ShowText(strconv.Itoa(g.maxpoints) + " POINTS")
+			
+		
+	}
+	
 	
 }
+
+
+
 
 func (g *gameStatus) calculateUnitSize () {
 	
@@ -556,34 +565,29 @@ func (g *gameStatus) calculateUnitSize () {
 	
 }
 
-func game( g * gameStatus, win *gtk.Window , hof * hallOfFame) {
+
+
+func game( g * gameStatus, win *gtk.Window ) {
 	
 	for {
 		if  g.flagEnd == 1  {
-			g.maxpoints = hof.points[0]
-			if g.flagDataW == 0 {
-				L:
-				for k :=0 ; k < MAX_NUM_HOF_ENTRIES ; k++ {
-					if g.points > hof.points[k] {
-						for z := MAX_NUM_HOF_ENTRIES - 1; z > k ; z-- {
-							hof.name[z] = hof.name[z-1]
-							hof.points[z] = hof.points[z-1]
-						}
-						hof.name[k] = "_"
-						hof.points[k] = g.points
-						hof.writeRecords()
-						g.flagDataW = 1
-						break L
-					}
-				}
-			} 	
+			if g.points > g.maxpoints {
+				g.maxpoints = g.points
+				g.writeRecord()
+				g.flagShowHof = 1
+				win.QueueDraw()
+			}
 		} 
 		
 		time.Sleep( time.Duration(g.speed) * time.Millisecond)
 		
 		if g.flagEnd == 0 {
-			g.move ( KEY_DOWN )
-			win.QueueDraw()
+			if g.flagPause == 0 {
+				if g.flagShowHof == 0 {
+					g.move ( KEY_DOWN )
+					win.QueueDraw()
+				}
+			}
 		}
 		
 	}
@@ -591,15 +595,12 @@ func game( g * gameStatus, win *gtk.Window , hof * hallOfFame) {
 
 func main() {
 
-	hof := hallOfFame { }
-	hof.readRecords()
-
 
 	gtk.Init(nil)
 
 
 	win, _ := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
-	win.SetTitle("GO LBX TETRIS")
+	win.SetTitle("LBX TETRAFORM")
 	win.Connect("destroy", func() {
 		gtk.MainQuit()
 	})
@@ -647,9 +648,11 @@ func main() {
 						nextpysize: nextp.GetAllocatedHeight( ),
 					}
 	gs.calculateUnitSize()
+	gs.readRecord()
 	gs.firstpiece()
 	gs.newpiece()
-	gs.maxpoints = hof.points[0]
+
+	fmt.Println( "Max points ",gs.maxpoints )
 
 	// Event handlers
 		
@@ -664,14 +667,13 @@ func main() {
 	})
 	win.Connect("key-press-event", func(win *gtk.Window, ev *gdk.Event) {
 		keyEvent := &gdk.EventKey{ev}
-		gs.move( keyEvent.KeyVal() )
-		
+		gs.move( keyEvent.KeyVal() )	
 		win.QueueDraw()	
 	})
 
 
 
-	go game(&gs,win,&hof)
+	go game(&gs,win)
 
 	// Begin executing the GTK main loop.  This blocks until
 	// gtk.MainQuit() is run. 
